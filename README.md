@@ -454,9 +454,9 @@ The application is a normal FastAPI service. Interactive documentation is availa
 **If you use NeuroVoxel**, cite this repository (see `CITATION.cff`; GitHub shows a "Cite this repository" button) and the data and software below.
 
 ```bibtex
-@software{neurovoxel_2026,
-  author  = {Harinii},
-  title   = {NeuroVoxel: a radiomics case explorer for MSD Task01 BrainTumour},
+@software{Neurovoxel_2026,
+  author  = {Harinii Sathappan},
+  title   = {NeuroVoxel: A web platform for spatial analysis, 3D feature extraction and volumetric calculation in glioma MRI},
   year    = {2026},
   version = {3.1.0},
   url     = {https://github.com/hariniisathappan/NeuroVoxel}
@@ -489,7 +489,7 @@ The items below are **planned and not yet implemented**:
 
 ## 18. Author and acknowledgements
 
-**Harinii S** — School of Chemical and Biotechnology, Division of Bioinformatics, SASTRA Deemed to be University, Thanjavur  
+**Harinii Sathappan** — School of Chemical and Biotechnology, Division of Bioinformatics, SASTRA Deemed to be University, Thanjavur  
 *B.Tech Bioinformatics (Hons), Minor Specialization in AI/ML*
 
 Contact:hariniisathappan06@gmail.com.
