@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NeuroVoxel — Case Explorer</title>
+<script>try{if(localStorage.getItem('neurovoxel-theme')==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="stylesheet" href="/static/nv-v3.css">
+<link rel="stylesheet" href="/static/nv-advanced.css">
+<link rel="stylesheet" href="/static/nv-theme.css">
+<script src="/static/vendor/chart.umd.js"></script>
+<script src="/static/nv-fx.js" defer></script>
+</head>
+<body>
+<canvas id="signals" aria-hidden="true"></canvas>
+
+<nav class="nav">
+  <div class="logo"><b>NEURO</b>VOXEL <span>// CASE EXPLORER</span></div>
+  <a href="#home" data-view="home">Dataset</a>
+  <a href="#explorer" data-view="explorer">Explorer</a>
+  <a href="#upload" data-view="upload">Upload a case</a>
+  <a href="#case" data-view="case" id="nav-case" hidden>Case</a>
+  <a href="#patients" data-view="patients">Compare patients</a>
+  <a href="#cohort" data-view="cohort">Cohort analysis</a>
+  <a href="#data" data-view="data">Data &amp; clean-up</a>
+  <button type="button" id="theme-toggle" class="theme-toggle" aria-label="Switch to light mode" title="Switch to light mode">☀</button>
+  <span id="db-status" class="pill">CHECKING…</span>
+</nav>
+
+<main>
+<!-- ============================================================ HOME / DATASET -->
+<section class="view" id="view-home">
+  <div class="hero">
+    <div>
+      <div class="eyebrow">QUANTITATIVE NEUROIMAGING WORKSPACE</div>
+      <h1>See the <span>signal</span> inside the voxel.</h1>
+      <p>NeuroVoxel is a browser-based research workspace for reproducible, region-of-interest radiomics on the Medical Segmentation Decathlon brain-tumour MRI set. Filter cases, calculate PyRadiomics features on demand, and compare sequences, sub-regions, patients and cohorts.</p>
+      <div class="buttons">
+        <button class="button primary" id="go-explorer">OPEN THE EXPLORER</button>
+        <button class="button" id="go-cohort">COHORT ANALYSIS</button>
+      </div>
+    </div>
+    <div class="voxel-stage" aria-hidden="true"><canvas id="voxel-hero"></canvas></div>
+  </div>
+
+  <div class="wrap">
+    <div id="dataset-warning" class="note err" hidden></div>
+    <div class="grid3" id="stat-cards"></div>
+
+    <div class="card" id="index-card">
+      <div class="eyebrow">STEP 1 · ONE-TIME</div>
+      <h2>Index the dataset</h2>
+      <p class="mut">Reads each case once (volumes of the three tumour sub-regions, dominant sub-region, approximate hemisphere, quick consistency checks).
+        Nothing is copied: your dataset folder is only read. Takes a few minutes for all 484 cases and is not repeated unless you ask.</p>
+      <div class="row">
+        <button class="button primary" id="btn-index">INDEX DATASET</button>
+        <button class="button" id="btn-reindex" title="Re-read every case">RE-INDEX ALL</button>
+        <button class="button" id="btn-index-stop" hidden>STOP</button>
+      </div>
+      <div class="prog" id="index-prog" hidden><i></i></div>
+      <p class="mut small" id="index-msg"></p>
+    </div>
+
+    <div class="grid2">
+      <div class="card"><div class="eyebrow">WHAT THE DATASET FILE SAYS</div><h3>Label and channel mapping</h3><div id="mapping" class="mut">Index the dataset to read it.</div></div>
+      <div class="card"><div class="eyebrow">HOW FEATURES ARE CALCULATED</div><h3>Same settings for every case</h3><ul class="list" id="settings-list"></ul></div>
+    </div>
+
+    <div id="home-charts"></div>
+
+    <div class="card honest"><b>What this tool is, and is not.</b>
+      A measurement and exploration tool for open research data. Radiomic features are image-derived numbers, not diagnoses or predictions. The dataset has no age,
+      survival or molecular information, so groups are defined by tumour size, sub-region and location only. Dataset: Medical Segmentation Decathlon, Task01 BrainTumour
+      (BraTS-derived), CC-BY-SA 4.0 — Antonelli et al., Nat Commun 2022.</div>
+  </div>
+</section>
+
+<!-- ============================================================ EXPLORER -->
+<section class="view" id="view-explorer" hidden>
+  <div class="page-heading"><div class="eyebrow">STEP 2</div><h1>Find cases.</h1>
+    <p>Choose filters, pick a case, press <b>Calculate PyRadiomics</b>. Or calculate every case that matches your filters.</p></div>
+  <div class="wrap explorer">
+    <aside class="card filters">
+      <h3>Filters</h3>
+      <label>Case id contains<input type="text" id="f-q" placeholder="e.g. 045"></label>
+      <label>Tumour size <span class="hint" id="size-hint"></span>
+        <select id="f-size"><option value="">Any</option><option value="small">Small (lowest third)</option><option value="medium">Medium</option><option value="large">Large (highest third)</option></select></label>
+      <label>Largest sub-region
+        <select id="f-dominant"><option value="">Any</option><option value="edema">Peritumoral edema</option><option value="net">Non-enhancing / necrotic</option><option value="enhancing">Enhancing tumour</option></select></label>
+      <label>Hemisphere (approximate)
+        <select id="f-hemisphere"><option value="">Any</option><option value="left">Left</option><option value="right">Right</option><option value="bilateral">Crosses midline</option></select></label>
+      <label>Enhancing tumour present
+        <select id="f-enh"><option value="">Any</option><option value="yes">Yes</option><option value="no">No / too small</option></select></label>
+      <label>Whole tumour volume (mL)
+        <span class="two"><input type="number" id="f-minw" placeholder="min" min="0"><input type="number" id="f-maxw" placeholder="max" min="0"></span></label>
+      <label>Consistency check
+        <select id="f-valid"><option value="">Any</option><option value="pass">Pass</option><option value="warn">Warning</option><option value="fail">Fail</option></select></label>
+      <label>PyRadiomics
+        <select id="f-calc"><option value="">Any</option><option value="yes">Calculated</option><option value="no">Not calculated</option></select></label>
+      <div class="row"><button class="button primary" id="f-apply">APPLY</button><button class="button" id="f-reset">RESET</button></div>
+      <hr>
+      <h3>Calculate all matching</h3>
+      <label>At most <input type="number" id="batch-n" value="20" min="1" style="width:80px"> cases (about 20–60 s each)</label>
+      <div class="row"><button class="button primary" id="btn-batch">CALCULATE MATCHING</button><button class="button" id="btn-batch-stop" hidden>STOP</button></div>
+      <div class="prog" id="batch-prog" hidden><i></i></div><p class="mut small" id="batch-msg"></p>
+    </aside>
+    <section class="card tablecard">
+      <div class="row between"><div><b id="result-count">—</b> <span class="mut small" id="result-note"></span></div>
+        <div class="row"><button class="button" id="btn-compare-sel" disabled>COMPARE SELECTED (2–4)</button></div></div>
+      <div class="tablewrap"><table class="tbl" id="case-table"><thead></thead><tbody></tbody></table></div>
+      <div class="row between"><button class="button" id="pg-prev">‹ PREV</button><span class="mut small" id="pg-info"></span><button class="button" id="pg-next">NEXT ›</button></div>
+    </section>
+  </div>
+</section>
+
+<!-- ============================================================ PIPELINE A -->
+<section class="view" id="view-upload" hidden>
+  <div class="page-heading"><div class="eyebrow">PIPELINE A · YOUR MRI</div><h1>Analyze an uploaded case.</h1>
+    <p>Upload one to four registered 3D MRI sequences and the matching segmentation. NeuroVoxel validates the files before calculating features. Nothing is sent outside this server.</p></div>
+  <div class="wrap">
+    <div class="card" id="upload-recent"><h3>Saved upload analyses</h3><p class="mut small">Your uploads stay separate from the reference cohort. Reopen a saved result without uploading or calculating again.</p><div id="upload-recent-list" class="mut small">Loading saved uploads…</div></div>
+    <div class="card"><h3>1 · Select sequences</h3><p class="mut small">Each drop area accepts one .nii or .nii.gz file. Choose only the sequences you have. The segmentation is always required.</p>
+      <div class="grid2" id="upload-slots">
+        <label class="upload-drop">T1<input type="file" data-upload-seq="t1" accept=".nii,.gz"></label>
+        <label class="upload-drop">T1 contrast enhanced (T1c)<input type="file" data-upload-seq="t1ce" accept=".nii,.gz"></label>
+        <label class="upload-drop">T2<input type="file" data-upload-seq="t2" accept=".nii,.gz"></label>
+        <label class="upload-drop">FLAIR<input type="file" data-upload-seq="flair" accept=".nii,.gz"></label>
+      </div>
+      <label class="upload-drop">Matching segmentation (required)<input id="upload-seg" type="file" accept=".nii,.gz"></label>
+      <h3>2 · Map your segmentation labels</h3><p class="mut small">Use JSON with source label number as key and sub-region as value. Supported sub-regions: net, edema, enhancing. Example: <code>{"1":"net","2":"edema","4":"enhancing"}</code>. Labels absent from your segmentation must be removed.</p>
+      <label>Label mapping<input id="upload-label-map" type="text" value='{"1":"net","2":"edema","4":"enhancing"}' autocomplete="off"></label>
+      <div class="row"><button id="upload-analyze" class="button primary">VALIDATE AND CALCULATE</button><span id="upload-status" class="mut small"></span></div>
+    </div>
+    <div id="upload-output"></div>
+  </div>
+</section>
+
+<!-- ============================================================ CASE -->
+<section class="view" id="view-case" hidden>
+  <div class="page-heading"><div class="eyebrow" id="case-eyebrow">CASE</div><h1 id="case-title">—</h1><p id="case-sub" class="mut"></p></div>
+  <div class="wrap">
+    <div class="card" id="case-actions"></div>
+    <div class="viewgrid single">
+      <section class="card nopad">
+        <div class="panel-head">MULTIPLANAR VIEWER <span class="live">● READ FROM THE DATASET</span></div>
+        <div class="viewer"><canvas id="nv-canvas"></canvas></div>
+        <div class="row pad" id="viewer-controls"></div>
+      </section>
+    </div>
+    <div class="tiles" id="vol-tiles"></div>
+    <div id="case-viz"></div>
+    <div id="nva-host"></div>
+    <div id="case-results" hidden>
+      <div class="tabs" id="case-tabs"></div>
+      <div id="case-tab-body"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ PATIENTS -->
+<section class="view" id="view-patients" hidden>
+  <div class="page-heading"><div class="eyebrow">COMPARE</div><h1>Patient against patient.</h1>
+    <p>Pick 2–4 calculated cases. Values are shown next to their percentile among all calculated cases. Percentiles describe position within <i>this</i> set of cases, not a reference population.</p></div>
+  <div class="wrap">
+    <div class="card"><div class="row" id="patient-pick"></div>
+      <div class="row">
+        <label>Region <select id="pt-region"></select></label>
+        <label>Sequence <select id="pt-seq"></select></label>
+        <button class="button primary" id="pt-run">COMPARE</button></div></div>
+    <div id="pt-out"></div>
+  </div>
+</section>
+
+<!-- ============================================================ COHORT -->
+<section class="view" id="view-cohort" hidden>
+  <div class="page-heading"><div class="eyebrow">LARGER COMPARISONS</div><h1>Group against group.</h1>
+    <p>Define two groups among the <b id="coh-n">0</b> calculated cases and see which sequence, region or feature family separates them more. Exploratory statistics only.</p></div>
+  <div class="wrap">
+    <div class="card">
+      <div class="row"><b>Presets</b>
+        <button class="button" data-preset="size">Large vs small tumours</button>
+        <button class="button" data-preset="enh">Enhancing present vs absent</button>
+        <button class="button" data-preset="hemi">Left vs right hemisphere</button>
+        <button class="button" data-preset="dom">Edema-dominant vs non-edema-dominant</button></div>
+      <div class="grid2 groups">
+        <div><h3>Group A</h3><div class="gform" id="gA"></div></div>
+        <div><h3>Group B</h3><div class="gform" id="gB"></div></div>
+      </div>
+      <div class="row"><button class="button primary" id="coh-run">RUN COMPARISON</button><span class="mut small" id="coh-msg"></span></div>
+    </div>
+    <div id="coh-out"></div>
+    <div class="card">
+      <div class="eyebrow">ONE FEATURE, WHOLE COHORT</div><h3>Compare sequences across all calculated cases</h3>
+      <div class="row"><label>Region <select id="cf-region"></select></label><label>Feature <select id="cf-feature"></select></label></div>
+      <div class="chart tall"><canvas id="cf-chart"></canvas></div><p class="mut small" id="cf-note"></p>
+      <h3 style="margin-top:14px">Spread of the same feature (box plot)</h3><div class="chart"><canvas id="cf-box"></canvas></div><p class="mut small">Box = middle 50% of cases, white square = median, short lines = lowest and highest.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ DATA -->
+<section class="view" id="view-data" hidden>
+  <div class="page-heading"><div class="eyebrow">HOUSEKEEPING</div><h1>Data &amp; clean-up.</h1>
+    <p>Everything NeuroVoxel stores is re-creatable from your dataset folder. Your dataset itself is never modified.</p></div>
+  <div class="wrap">
+    <div class="grid3" id="storage-cards"></div>
+    <div class="card"><h3>Clean up</h3>
+      <div class="row"><button class="button" id="clean-staged">DELETE TEMPORARY CASE FILES</button>
+        <button class="button" id="clean-results">DELETE ALL CALCULATED RESULTS</button></div>
+      <p class="mut small">Temporary case files are the split sequences used by the viewer; they are re-created automatically when needed. Deleting calculated results
+        keeps the dataset index, so you can calculate again without re-indexing. To start completely fresh, stop the app and delete the Docker volume (see README).</p>
+      <p class="mut small" id="clean-msg"></p></div>
+    <div class="card"><h3>Reading the numbers</h3><ul class="list">
+      <li>Each sequence of each patient is z-scored on its brain voxels, then discretised with a fixed bin width of 0.25. That is why sequences are comparable.</li>
+      <li>Shape features depend on the mask only, so they are identical across sequences and are computed once per region.</li>
+      <li>Texture features are correlated with region size. The cohort page reports that correlation next to every effect size.</li>
+      <li>The segmentations were produced semi-automatically and reviewed; features partly reflect how a region was defined.</li>
+      <li>"Better" on this site only ever means "separates the groups more", never "more clinically useful".</li></ul></div>
+  </div>
+</section>
+</main>
+
+<div id="busy" class="busy" hidden><div class="card busy-card"><div class="scanner"><i class="wirebrain"></i><i class="scanplane"></i></div>
+  <h2 id="busy-title">Working…</h2><p class="mut" id="busy-msg"></p><div class="prog"><i id="busy-bar"></i></div></div></div>
+<div id="toast" class="toast" hidden></div>
+<footer>Research-use software. Features are image-derived measurements, not diagnosis, prognosis or molecular prediction. Data: Medical Segmentation Decathlon Task01 (CC-BY-SA 4.0).</footer>
+<script src="/static/nv-visual.js" defer></script>
+<script src="/static/nv-scan.js" defer></script>
+<script type="module" src="/static/nv-app.js"></script>
+</body>
+</html>

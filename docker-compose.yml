@@ -1,0 +1,15 @@
+services:
+  neurovoxel:
+    build: .
+    container_name: neurovoxel-app
+    ports: ["127.0.0.1:8000:8000"]
+    environment:
+      NEUROVOXEL_DATA_DIR: /var/lib/neurovoxel
+      NV_DATASET_DIR: /data/msd
+      NV_WORKERS: "4"
+    volumes:
+      - neurovoxel_data:/var/lib/neurovoxel          # database + staged files (kept between runs)
+      - "E:/Dataset_tumor/Task01_BrainTumour:/data/msd:ro"   # YOUR dataset folder, read-only. Change the path if yours differs.
+    restart: unless-stopped
+volumes:
+  neurovoxel_data:

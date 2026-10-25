@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NeuroVoxel — Database</title>
+<link rel="stylesheet" href="/static/nv-v3.css">
+<script src="/static/nv-fx.js" defer></script>
+<style>
+.dbgrid{display:grid;grid-template-columns:280px 1fr;gap:16px;align-items:start}
+@media(max-width:900px){.dbgrid{grid-template-columns:1fr}}
+.tlist{display:grid;gap:6px}
+.tlist button{display:flex;justify-content:space-between;gap:10px;text-align:left;border:1px solid var(--edge);background:#0b1a2f;color:var(--text);border-radius:9px;padding:10px 12px;font:600 12px var(--mono);cursor:pointer;transition:.2s}
+.tlist button:hover{border-color:#5be8ff}.tlist button.on{background:var(--cyan);color:#02111f;border-color:var(--cyan)}.tlist b{font-weight:700;opacity:.85}
+.dbtable{max-height:560px;overflow:auto;border:1px solid var(--edge);border-radius:10px}
+.dbtable table{border-collapse:collapse;width:100%;font:12px var(--mono)}
+.dbtable th{position:sticky;top:0;background:#071328;color:var(--muted);text-align:left;padding:9px 11px;white-space:nowrap;cursor:pointer;border-bottom:1px solid var(--edge);z-index:1}
+.dbtable td{padding:7px 11px;border-bottom:1px solid #16283f;max-width:360px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#d6e2f3}
+.dbtable tr:hover td{background:#0f2540}.null{color:#55657c;font-style:italic}
+.cols{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}.cols span{font:600 10px var(--mono);border:1px solid var(--edge);border-radius:999px;padding:3px 9px;color:var(--muted)}.cols span.k{color:var(--cyan);border-color:#1c6a82}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:10px 0}
+</style>
+</head>
+<body>
+<canvas id="signals" aria-hidden="true"></canvas>
+<nav class="nav"><div class="logo"><b>NEURO</b>VOXEL <span>// DATABASE</span></div><a href="/">← Back to the explorer</a><span class="pill ok" id="ro">READ-ONLY</span></nav>
+<main><div class="view">
+  <div class="page-heading"><div class="eyebrow">BACKEND</div><h1>What is stored.</h1>
+    <p>Everything NeuroVoxel keeps in its SQLite database: the indexed dataset (<code>cases</code>), validation reports, calculated feature values, normalisation numbers, jobs and more. Read-only: nothing can be changed here.</p></div>
+  <div class="wrap">
+    <div class="grid3" id="cards"></div>
+    <div class="dbgrid">
+      <div class="card"><h3>Tables</h3><div class="tlist" id="tlist"></div></div>
+      <div class="card"><h3 id="tname">Choose a table</h3><div class="cols" id="tcols"></div>
+        <div class="row"><input type="text" id="q" placeholder="Search in this table…" style="min-width:240px"><button class="button sm" id="go">SEARCH</button><button class="button sm" id="clr">CLEAR</button>
+          <a class="button sm" id="csv" href="#">DOWNLOAD CSV</a><span class="mut small" id="count"></span></div>
+        <div class="dbtable"><table id="grid"></table></div>
+        <div class="row"><button class="button sm" id="prev">← PREVIOUS</button><button class="button sm" id="next">NEXT →</button><span class="mut small" id="page"></span></div>
+      </div>
+    </div>
+    <div class="card"><h3>Reproducibility record</h3><p class="mut small">Exactly how these numbers were produced: dataset fingerprint, code fingerprint, library versions and every setting. Attach it to your report or thesis.</p>
+      <div class="row"><a class="button sm" href="/api/reproducibility.json">DOWNLOAD (.JSON)</a><a class="button sm" href="/api/reproducibility.csv">DOWNLOAD (.CSV, opens in Excel)</a></div><pre id="rep" class="mut small" style="white-space:pre-wrap;overflow:auto;max-height:260px"></pre></div>
+    <div class="card honest"><b>Where is the file?</b> <span id="where"></span><br>It lives inside the Docker volume <code>neurovoxel_data</code>, so you will not see it in your project folder. This page reads it directly; to open it in "DB Browser for SQLite", copy it out with the two commands in the README.</div>
+  </div>
+</div></main>
+<script>
+const $ = s => document.querySelector(s), esc = t => String(t ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let cur = null, off = 0, sort = '', desc = false; const LIM = 50;
+async function j(u) { const r = await fetch(u); const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.detail || r.status); return d; }
+async function boot() {
+  try {
+    const o = await j('/api/db/overview');
+    $('#cards').innerHTML = `<div class="card stat"><b>${o.tables.length}</b><span>tables</span><small>${esc(o.file)}</small></div>
+      <div class="card stat"><b>${o.size_mb} MB</b><span>file size</span><small>SQLite ${esc(o.sqlite_version)}, WAL mode</small></div>
+      <div class="card stat"><b>${(o.tables.find(t => t.name === 'cases') || {rows: 0}).rows.toLocaleString()}</b><span>cases indexed</span><small>${(o.tables.find(t => t.name === 'feature_values') || {rows: 0}).rows.toLocaleString()} feature values stored</small></div>`;
+    $('#where').textContent = o.location;
+    $('#tlist').innerHTML = o.tables.map(t => `<button data-t="${t.name}">${t.name}<b>${t.rows.toLocaleString()}</b></button>`).join('');
+    document.querySelectorAll('#tlist button').forEach(b => b.onclick = () => open(b.dataset.t));
+    open(o.tables.find(t => t.name === 'cases') ? 'cases' : o.tables[0].name);
+  } catch (e) { $('#cards').innerHTML = `<div class="note err">${esc(e.message)}</div>`; }
+}
+async function open(t) { cur = t; off = 0; sort = ''; desc = false; $('#q').value = ''; document.querySelectorAll('#tlist button').forEach(b => b.classList.toggle('on', b.dataset.t === t)); load(); }
+async function load() {
+  const q = $('#q').value.trim();
+  const d = await j(`/api/db/table/${cur}?limit=${LIM}&offset=${off}&q=${encodeURIComponent(q)}&sort=${encodeURIComponent(sort)}&desc=${desc}`);
+  $('#tname').textContent = d.table;
+  $('#tcols').innerHTML = d.columns.map(c => `<span class="${c.key ? 'k' : ''}">${esc(c.name)} · ${esc(c.type || 'any')}${c.key ? ' · key' : ''}</span>`).join('');
+  $('#grid').innerHTML = `<thead><tr>${d.columns.map(c => `<th data-c="${esc(c.name)}">${esc(c.name)}${sort === c.name ? (desc ? ' ▼' : ' ▲') : ''}</th>`).join('')}</tr></thead><tbody>` +
+    d.rows.map(r => `<tr>${r.map(v => `<td title="${esc(v)}">${v === null ? '<span class="null">NULL</span>' : esc(v)}</td>`).join('')}</tr>`).join('') + '</tbody>';
+  document.querySelectorAll('#grid th').forEach(h => h.onclick = () => { desc = sort === h.dataset.c ? !desc : false; sort = h.dataset.c; off = 0; load(); });
+  $('#count').textContent = `${d.total.toLocaleString()} row${d.total === 1 ? '' : 's'}${q ? ' match' : ''}`;
+  $('#page').textContent = d.total ? `rows ${(off + 1).toLocaleString()}–${Math.min(off + LIM, d.total).toLocaleString()}` : 'empty';
+  $('#prev').disabled = off === 0; $('#next').disabled = off + LIM >= d.total;
+  $('#csv').href = `/api/db/table/${cur}/export.csv?q=${encodeURIComponent(q)}`;
+}
+$('#go').onclick = () => { off = 0; load(); }; $('#q').onkeydown = e => { if (e.key === 'Enter') { off = 0; load(); } };
+$('#clr').onclick = () => { $('#q').value = ''; off = 0; load(); };
+$('#prev').onclick = () => { off = Math.max(0, off - LIM); load(); }; $('#next').onclick = () => { off += LIM; load(); };
+fetch('/api/reproducibility').then(r=>r.json()).then(d=>{$('#rep').textContent=JSON.stringify(d,null,2)}).catch(()=>{});
+boot();
+</script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.py[cod]
+*.sqlite3*
+work/
+storage/
+*.nii
+*.nii.gz
+.env
+Task01_BrainTumour/
+static/*.orig
+advanced.py.orig
+!reference/ibsi_phantom/*.nii.gz

@@ -1,0 +1,29 @@
+.venv/
+__pycache__/
+*.py[cod]
+*.sqlite3*
+work/
+storage/
+.env
+Task01_BrainTumour/
+*.orig
+verification_*.md
+verification_*.csv
+# patient/dataset images are NEVER published (CC-BY-SA data stays at its source)
+*.nii
+*.nii.gz
+# ...except the tiny IBSI phantom used by the verification tab (CC-BY 4.0)
+!reference/ibsi_phantom/*.nii.gz
+
+# files that exist locally but must not be published
+README_01.md
+nv.sqlite3
+neurovoxel_v3.sqlite3
+TECHNICAL_REPORT_ADDITIONS.md
+
+# editor / system files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.zip

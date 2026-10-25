@@ -1,0 +1,12 @@
+cff-version: 1.2.0
+message: "If you use NeuroVoxel, please cite it as below, and also cite the MSD / BraTS / PyRadiomics papers listed in CITATIONS.md."
+title: "NeuroVoxel: a radiomics case explorer for MSD Task01 BrainTumour"
+type: software
+authors:
+  - given-names: "Harinii Sathappan"
+    
+license: MIT
+repository-code: "https://github.com/hariniisathappan/NeuroVoxel"
+date-released: "2026-10-19"
+version: "3.1"
+keywords: [radiomics, glioma, MRI, PyRadiomics, BraTS, medical-segmentation-decathlon]
