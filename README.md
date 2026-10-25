@@ -489,7 +489,7 @@ The items below are **planned and not yet implemented**:
 
 ## 18. Author and acknowledgements
 
-**Harinii Sathappan** — School of Chemical and Biotechnology, Division of Bioinformatics, SASTRA Deemed to be University, Thanjavur  
+**Harinii Sathappan** - School of Chemical and Biotechnology, Division of Bioinformatics, SASTRA Deemed to be University, Thanjavur  
 *B.Tech Bioinformatics (Hons), Minor Specialization in AI/ML*
 
 
