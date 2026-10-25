@@ -492,7 +492,6 @@ The items below are **planned and not yet implemented**:
 **Harinii Sathappan** — School of Chemical and Biotechnology, Division of Bioinformatics, SASTRA Deemed to be University, Thanjavur  
 *B.Tech Bioinformatics (Hons), Minor Specialization in AI/ML*
 
-Contact:hariniisathappan06@gmail.com.
 
 Thanks to the **Medical Segmentation Decathlon** and **BraTS** organisers and annotators for releasing the data, to the **PyRadiomics** team (Harvard / AIM) for the extraction library and its test data, and to the **IBSI** consortium for the reference phantom and values.
 
